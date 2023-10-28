@@ -302,6 +302,106 @@ class _CellContainerState extends PlutoStateWithChange<_CellContainer> {
   }
 }
 
+class _DraggableWidget extends StatefulWidget {
+  final PlutoGridStateManager stateManager;
+
+  final PlutoCell cell;
+
+  final Widget child;
+
+  const _DraggableWidget({
+    required this.stateManager,
+    required this.cell,
+    required this.child,
+  });
+
+  @override
+  State<_DraggableWidget> createState() => _DraggableWidgetState();
+}
+
+class _DraggableWidgetState extends State<_DraggableWidget> {
+  void _handleOnPointerMove(PointerMoveEvent event) {
+    widget.stateManager.eventManager!.addEvent(PlutoGridScrollUpdateEvent(
+      offset: event.position,
+      scrollDirection: PlutoGridScrollUpdateDirection.horizontal,
+    ));
+  }
+
+  void _handleOnPointerUp(PointerUpEvent event) {
+    PlutoGridScrollUpdateEvent.stopScroll(
+      widget.stateManager,
+      PlutoGridScrollUpdateDirection.horizontal,
+    );
+  }
+
+  bool _dragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerMove: _handleOnPointerMove,
+      onPointerUp: _handleOnPointerUp,
+      child: Draggable<PlutoCell>(
+        data: widget.cell,
+        onDragStarted: () {
+          _dragging = true;
+          if (mounted) {
+            setState(() {});
+          }
+        },
+        onDragEnd: (_) {
+          if (mounted) {
+            setState(() {});
+          }
+        },
+        onDraggableCanceled: (_, __) {
+          _dragging = false;
+          if (mounted) {
+            setState(() {});
+          }
+        },
+        onDragCompleted: () {
+          _dragging = false;
+          if (mounted) {
+            setState(() {});
+          }
+        },
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: FractionalTranslation(
+          translation: const Offset(-0.5, -0.5),
+          child: PlutoShadowContainer(
+            alignment: widget.cell.column.titleTextAlign.alignmentValue,
+            width: PlutoGridSettings.minColumnWidth,
+            height: widget.stateManager.columnHeight,
+            backgroundColor:
+                widget.stateManager.configuration.style.gridBackgroundColor,
+            borderColor:
+                widget.stateManager.configuration.style.gridBorderColor,
+            child: Text(
+              widget.cell.value.toString(),
+              style: widget.stateManager.configuration.style.columnTextStyle
+                  .copyWith(
+                fontSize: 12,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              softWrap: false,
+            ),
+          ),
+        ),
+        child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+                color: Colors.transparent,
+                border: Border.all(
+                    color: _dragging ? Colors.white : Colors.transparent,
+                    width: 1)),
+            child: widget.child),
+      ),
+    );
+  }
+}
+
 class _Cell extends PlutoStatefulWidget {
   final PlutoGridStateManager stateManager;
 
@@ -332,6 +432,8 @@ class _CellState extends PlutoStateWithChange<_Cell> {
   @override
   PlutoGridStateManager get stateManager => widget.stateManager;
 
+  bool _acceptingDraggable = false;
+
   @override
   void initState() {
     super.initState();
@@ -349,6 +451,47 @@ class _CellState extends PlutoStateWithChange<_Cell> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.column.enableCellDrag) {
+      return _DraggableWidget(
+          stateManager: stateManager,
+          cell: widget.cell,
+          child: DragTarget<PlutoCell>(onLeave: (data) {
+            _acceptingDraggable = false;
+            if (mounted) {
+              setState(() {});
+            }
+          }, onMove: (data) {
+            _acceptingDraggable = true;
+            if (mounted) {
+              setState(() {});
+            }
+          }, onAccept: (data) {
+            _acceptingDraggable = false;
+            widget.cell.value = data.value;
+            updateState(PlutoNotifierEventForceUpdate.instance);
+            if (mounted) {
+              setState(() {});
+            }
+          }, builder: (BuildContext context, List<Object?> candidateData,
+              List<dynamic> rejectedData) {
+            return _buildWidget();
+          }));
+    }
+    return _buildWidget();
+  }
+
+  AnimatedContainer _buildWidget() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+          border: Border.all(
+              color: _acceptingDraggable ? Colors.white : Colors.transparent,
+              width: 1)),
+      child: _getWidget(),
+    );
+  }
+
+  StatefulWidget _getWidget() {
     if (_showTypedCell && widget.column.enableEditingMode == true) {
       if (widget.column.type.isSelect) {
         return PlutoSelectCell(

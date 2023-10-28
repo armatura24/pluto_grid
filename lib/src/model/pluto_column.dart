@@ -46,6 +46,7 @@ class PlutoColumn {
 
   EdgeInsets? filterPadding;
 
+
   /// Customize the column with TextSpan or WidgetSpan instead of the column's title string.
   ///
   /// ```
@@ -145,6 +146,8 @@ class PlutoColumn {
   /// Change the position of the row by dragging the icon in the cell.
   bool enableRowDrag;
 
+  bool enableCellDrag;
+
   /// A checkbox appears in the cell of the column.
   bool enableRowChecked;
 
@@ -216,6 +219,7 @@ class PlutoColumn {
     this.suppressedAutoSize = false,
     this.enableColumnDrag = true,
     this.enableRowDrag = false,
+    this.enableCellDrag = false,
     this.enableRowChecked = false,
     this.enableSorting = true,
     this.enableContextMenu = true,
