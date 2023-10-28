@@ -465,7 +465,6 @@ class _CellState extends PlutoStateWithChange<_Cell> {
   Widget build(BuildContext context) {
     if (widget.column.enableCellDrag) {
       if (widget.column.cellDragReadonly) {
-        print("readonly - ${widget.column.title}");
         return _DraggableWidget(
           stateManager: stateManager,
           cell: widget.cell,
@@ -482,8 +481,6 @@ class _CellState extends PlutoStateWithChange<_Cell> {
             setState(() {});
           }
         }, onMove: (data) {
-          print("data: ${data.data.cell.column.cellDragInterchangeable}");
-          print("widget: ${widget.column.cellDragInterchangeable}");
           if (!data.data.cell.column.cellDragInterchangeable &&
               !widget.column.cellDragInterchangeable) {
             _acceptingDraggable = true;
@@ -516,10 +513,8 @@ class _CellState extends PlutoStateWithChange<_Cell> {
       }
 
       if (widget.column.cellDragAcceptOnly) {
-        print("Accept only - ${widget.column.title}");
         return buildDraggableTarget();
       } else {
-        print("default - ${widget.column.title}");
         return _DraggableWidget(
             stateManager: stateManager,
             cell: widget.cell,
