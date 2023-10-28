@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
 
@@ -302,18 +304,27 @@ class _CellContainerState extends PlutoStateWithChange<_CellContainer> {
   }
 }
 
+class _DraggableCellData {
+  final PlutoCell cell;
+  final VoidCallback forceStateUpdate;
+
+  const _DraggableCellData({
+    required this.cell,
+    required this.forceStateUpdate,
+  });
+}
+
 class _DraggableWidget extends StatefulWidget {
   final PlutoGridStateManager stateManager;
-
   final PlutoCell cell;
-
   final Widget child;
+  final VoidCallback forceStateUpdate;
 
-  const _DraggableWidget({
-    required this.stateManager,
-    required this.cell,
-    required this.child,
-  });
+  const _DraggableWidget(
+      {required this.stateManager,
+      required this.cell,
+      required this.child,
+      required this.forceStateUpdate});
 
   @override
   State<_DraggableWidget> createState() => _DraggableWidgetState();
@@ -341,8 +352,9 @@ class _DraggableWidgetState extends State<_DraggableWidget> {
     return Listener(
       onPointerMove: _handleOnPointerMove,
       onPointerUp: _handleOnPointerUp,
-      child: Draggable<PlutoCell>(
-        data: widget.cell,
+      child: Draggable<_DraggableCellData>(
+        data: _DraggableCellData(
+            cell: widget.cell, forceStateUpdate: widget.forceStateUpdate),
         onDragStarted: () {
           _dragging = true;
           if (mounted) {
@@ -438,7 +450,7 @@ class _CellState extends PlutoStateWithChange<_Cell> {
   void initState() {
     super.initState();
 
-    updateState(PlutoNotifierEventForceUpdate.instance);
+    _forceStateUpdate();
   }
 
   @override
@@ -452,32 +464,78 @@ class _CellState extends PlutoStateWithChange<_Cell> {
   @override
   Widget build(BuildContext context) {
     if (widget.column.enableCellDrag) {
-      return _DraggableWidget(
+      if (widget.column.cellDragReadonly) {
+        print("readonly - ${widget.column.title}");
+        return _DraggableWidget(
           stateManager: stateManager,
           cell: widget.cell,
-          child: DragTarget<PlutoCell>(onLeave: (data) {
-            _acceptingDraggable = false;
-            if (mounted) {
-              setState(() {});
-            }
-          }, onMove: (data) {
+          forceStateUpdate: _forceStateUpdate,
+          child: _buildWidget(),
+        );
+        ;
+      }
+
+      Widget buildDraggableTarget() {
+        return DragTarget<_DraggableCellData>(onLeave: (data) {
+          _acceptingDraggable = false;
+          if (mounted) {
+            setState(() {});
+          }
+        }, onMove: (data) {
+          print("data: ${data.data.cell.column.cellDragInterchangeable}");
+          print("widget: ${widget.column.cellDragInterchangeable}");
+          if (!data.data.cell.column.cellDragInterchangeable &&
+              !widget.column.cellDragInterchangeable) {
             _acceptingDraggable = true;
-            if (mounted) {
-              setState(() {});
-            }
-          }, onAccept: (data) {
-            _acceptingDraggable = false;
-            widget.cell.value = data.value;
-            updateState(PlutoNotifierEventForceUpdate.instance);
-            if (mounted) {
-              setState(() {});
-            }
-          }, builder: (BuildContext context, List<Object?> candidateData,
-              List<dynamic> rejectedData) {
-            return _buildWidget();
-          }));
+          } else if (data.data.cell.column.cellDragInterchangeable &&
+              widget.column.cellDragInterchangeable) {
+            _acceptingDraggable = true;
+          }
+
+          if (mounted) {
+            setState(() {});
+          }
+        }, onAccept: (data) {
+          if(!_acceptingDraggable) return;
+
+          _acceptingDraggable = false;
+          final temp = data.cell.value.toString();
+          if (widget.column.cellDragInterchangeable) {
+            data.cell.value = widget.cell.value;
+            widget.cell.value = temp;
+          } else {
+            widget.cell.value = data.cell.value;
+          }
+
+          _forceStateUpdate();
+          data.forceStateUpdate();
+        }, builder: (BuildContext context, List<Object?> candidateData,
+            List<dynamic> rejectedData) {
+          return _buildWidget();
+        });
+      }
+
+      if (widget.column.cellDragAcceptOnly) {
+        print("Accept only - ${widget.column.title}");
+        return buildDraggableTarget();
+      } else {
+        print("default - ${widget.column.title}");
+        return _DraggableWidget(
+            stateManager: stateManager,
+            cell: widget.cell,
+            forceStateUpdate: _forceStateUpdate,
+            child: buildDraggableTarget());
+      }
     }
     return _buildWidget();
+  }
+
+  void _forceStateUpdate() {
+    updateState(PlutoNotifierEventForceUpdate.instance);
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   AnimatedContainer _buildWidget() {

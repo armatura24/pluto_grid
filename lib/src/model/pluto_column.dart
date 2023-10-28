@@ -148,6 +148,12 @@ class PlutoColumn {
 
   bool enableCellDrag;
 
+  bool cellDragReadonly;
+
+  bool cellDragInterchangeable;
+
+  bool cellDragAcceptOnly;
+
   /// A checkbox appears in the cell of the column.
   bool enableRowChecked;
 
@@ -220,6 +226,9 @@ class PlutoColumn {
     this.enableColumnDrag = true,
     this.enableRowDrag = false,
     this.enableCellDrag = false,
+    this.cellDragReadonly = false,
+    this.cellDragInterchangeable = false,
+    this.cellDragAcceptOnly = false,
     this.enableRowChecked = false,
     this.enableSorting = true,
     this.enableContextMenu = true,
